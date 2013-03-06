@@ -4,7 +4,7 @@ require 'rack'
 require 'json'
 require 'sequel'
 require 'sequel/extensions/pg_array'
-require 'digest/hmac'
+require 'openssl'
 
 class RippleAPI
   TIMESTAMP_TOLERANCE = 300
@@ -76,7 +76,8 @@ class RippleAPI
     # Find expected signature
     full_path = request.fullpath.sub(/=+$/, '')
     trimmed_path = full_path.sub(/&sig=[A-Za-z0-9+\/]+=*\z/, '')
-    expected_sig = Digest::HMAC.base64digest(trimmed_path, key[:secret], Digest::SHA1).sub(/=+$/, '')
+    digest  = OpenSSL::Digest::Digest.new('sha1')
+    expected_sig = OpenSSL::HMAC.base64digest(digest, trimmed_path, key[:secret]).sub(/=+$/, '')
     expected_path = trimmed_path + '&sig=' + expected_sig
     p expected_sig
     raise APIKeyError.sig unless full_path == expected_path
