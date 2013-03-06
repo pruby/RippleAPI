@@ -78,9 +78,8 @@ class RippleAPI
     full_path = request.fullpath.sub(/=+$/, '')
     trimmed_path = full_path.sub(/&sig=[A-Za-z0-9+\/]+=*\z/, '')
     digest  = OpenSSL::Digest::Digest.new('sha1')
-    expected_sig = Base64.b64encode(OpenSSL::HMAC.digest(digest, key[:secret], trimmed_path).sub(/=+\n*$/, ''))
+    expected_sig = Base64.b64encode(OpenSSL::HMAC.digest(digest, key[:secret], trimmed_path).sub(/=+\n?\z/, ''))
     expected_path = trimmed_path + '&sig=' + expected_sig
-    p expected_sig
     raise APIKeyError.sig unless full_path == expected_path
     
     # Check for access to this account
