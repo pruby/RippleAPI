@@ -73,6 +73,7 @@ class RippleAPI
     # Retrieve API key record
     key = @db[:api_keys].where(:key_id => key_id).first
     raise APIKeyError.key unless key
+    raise APIKeyError.access unless key[:account_name] == account
     
     # Find expected signature
     full_path = request.fullpath.sub(/=+$/, '')
@@ -81,10 +82,6 @@ class RippleAPI
     expected_sig = Base64.encode64(OpenSSL::HMAC.digest(digest, key[:secret], trimmed_path)).sub(/=+\n?\z/, '')
     expected_path = trimmed_path + '&sig=' + expected_sig
     raise APIKeyError.sig unless full_path == expected_path
-    
-    # Check for access to this account
-    access = @db[:account_managers].where(:account_name => account, :minecraft_name => key[:minecraft_name])
-    raise APIKeyError.access unless access.exists
   end
   
   def transactions(account, start_period, stop_period)
