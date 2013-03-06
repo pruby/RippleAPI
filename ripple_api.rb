@@ -9,7 +9,7 @@ require 'base64'
 
 class RippleAPI
   TIMESTAMP_TOLERANCE = 300
-  ACCOUNT_SUFFIX = /([A-Za-z0-9_+]+)\.json$/
+  ACCOUNT_SUFFIX = /([A-Za-z0-9_]+)\.json$/
   
   def initialize(db)
     @db = db
