@@ -29,25 +29,27 @@ class RippleAPI
         api_key_check(account, request)
       end
       
-      case request.path
-        when /^\/transactions\/#{ACCOUNT_SUFFIX}/
-          status = 200
-          result = transactions(account, request['start'], request['stop'])
-        when /^\/paths\/via\/#{ACCOUNT_SUFFIX}/
-          status = 200
-          result = paths_via(account, request['start'], request['stop'])
-        when /^\/trusts\/trusted_by\/#{ACCOUNT_SUFFIX}/
-          status = 200
-          result = @db[:trusts].where(:trustor => account).select(:trustor, :trustee, :amount, :currency).to_a
-        when /^\/trusts\/who_trusts\/#{ACCOUNT_SUFFIX}/
-          status = 200
-          result = @db[:trusts].where(:trustee => account).select(:trustor, :trustee, :amount, :currency).to_a
-        when /^\/debts\/owed_by\/#{ACCOUNT_SUFFIX}/
-          status = 200
-          result = @db[:debts].where(:debt_from => account).select(:debt_from, :debt_to, :amount, :currency).to_a
-        when /^\/debts\/owed_to\/#{ACCOUNT_SUFFIX}/
-          status = 200
-          result = @db[:debts].where(:debt_to => account).select(:debt_from, :debt_to, :amount, :currency).to_a
+      if request.get?
+        case request.path
+          when /^\/transactions\/#{ACCOUNT_SUFFIX}/
+            status = 200
+            result = transactions(account, request['start'], request['stop'])
+          when /^\/paths\/via\/#{ACCOUNT_SUFFIX}/
+            status = 200
+            result = paths_via(account, request['start'], request['stop'])
+          when /^\/trusts\/trusted_by\/#{ACCOUNT_SUFFIX}/
+            status = 200
+            result = @db[:trusts].where(:trustor => account).select(:trustor, :trustee, :amount, :currency).to_a
+          when /^\/trusts\/who_trusts\/#{ACCOUNT_SUFFIX}/
+            status = 200
+            result = @db[:trusts].where(:trustee => account).select(:trustor, :trustee, :amount, :currency).to_a
+          when /^\/debts\/owed_by\/#{ACCOUNT_SUFFIX}/
+            status = 200
+            result = @db[:debts].where(:debt_from => account).select(:debt_from, :debt_to, :amount, :currency).to_a
+          when /^\/debts\/owed_to\/#{ACCOUNT_SUFFIX}/
+            status = 200
+            result = @db[:debts].where(:debt_to => account).select(:debt_from, :debt_to, :amount, :currency).to_a
+        end
       end
     rescue APIKeyError => e
       status = 403
