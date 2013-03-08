@@ -68,7 +68,6 @@ class RippleAPI
     parameters = request.GET() # query string parameters only
     
     # Check for key and signature
-    key_id = parameters[:key].to_s
     raise APIKeyError.key unless key_id
     
     query_string = request.query_string
@@ -76,7 +75,7 @@ class RippleAPI
     signature = env['HTTP_X_AUTH_TOKEN'].sub(BASE64_PADDING, '')
     
     # Check timestamp
-    timestamp = parameters[:time]
+    timestamp = parameters['time']
     raise APIKeyError.time unless timestamp
     raise APIKeyError.time if timestamp.to_i < Time.now.to_i - TIMESTAMP_TOLERANCE
     raise APIKeyError.time if timestamp.to_i > Time.now.to_i + TIMESTAMP_TOLERANCE
