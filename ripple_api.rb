@@ -9,7 +9,8 @@ require 'base64'
 
 class RippleAPI
   TIMESTAMP_TOLERANCE = 300
-  ACCOUNT_SUFFIX = /([A-Za-z0-9_+]+)\.json$/
+  KEY_SUFFIX = /([A-Za-z0-9_+.]+)\.json$/
+  BASE64_PADDING = /=+\n?\z/
   
   def initialize(db)
     @db = db
@@ -23,30 +24,35 @@ class RippleAPI
     
     begin
       account = nil
-      if request.path.match(ACCOUNT_SUFFIX)
-        md = request.path.match(ACCOUNT_SUFFIX)
-        account = md[1]
-        api_key_check(account, request)
+      if request.path.match(KEY_SUFFIX)
+        md = request.path.match(KEY_SUFFIX)
+        key_id = md[1]
+        account = api_key_check(key_id, request)
       end
       
       if request.get?
         case request.path
-          when /^\/transactions\/#{ACCOUNT_SUFFIX}/
+          when /^\/account\/#{KEY_SUFFIX}/
+            status = 200
+            result = {}
+            result[:account_name] = account
+            result[:managers] = @db[:account_managers].where(:account_name => account).get(:minecraft_name).to_a
+          when /^\/transactions\/#{KEY_SUFFIX}/
             status = 200
             result = transactions(account, request['start'], request['stop'])
-          when /^\/paths\/via\/#{ACCOUNT_SUFFIX}/
+          when /^\/paths\/via\/#{KEY_SUFFIX}/
             status = 200
             result = paths_via(account, request['start'], request['stop'])
-          when /^\/trusts\/trusted_by\/#{ACCOUNT_SUFFIX}/
+          when /^\/trusts\/trusted_by\/#{KEY_SUFFIX}/
             status = 200
             result = @db[:trusts].where(:trustor => account).select(:trustor, :trustee, :amount, :currency).to_a
-          when /^\/trusts\/who_trusts\/#{ACCOUNT_SUFFIX}/
+          when /^\/trusts\/who_trusts\/#{KEY_SUFFIX}/
             status = 200
             result = @db[:trusts].where(:trustee => account).select(:trustor, :trustee, :amount, :currency).to_a
-          when /^\/debts\/owed_by\/#{ACCOUNT_SUFFIX}/
+          when /^\/debts\/owed_by\/#{KEY_SUFFIX}/
             status = 200
             result = @db[:debts].where(:debt_from => account).select(:debt_from, :debt_to, :amount, :currency).to_a
-          when /^\/debts\/owed_to\/#{ACCOUNT_SUFFIX}/
+          when /^\/debts\/owed_to\/#{KEY_SUFFIX}/
             status = 200
             result = @db[:debts].where(:debt_to => account).select(:debt_from, :debt_to, :amount, :currency).to_a
         end
@@ -58,16 +64,19 @@ class RippleAPI
     [status, headers, [result.to_json]]
   end
   
-  def api_key_check(account, request)
+  def api_key_check(key_id, request)
+    parameters = request.GET() # query string parameters only
+    
     # Check for key and signature
-    key_id = request[:key].to_s
+    key_id = parameters[:key].to_s
     raise APIKeyError.key unless key_id
     
     query_string = request.query_string
-    raise APIKeyError.sig unless query_string.match(/&sig=[A-Za-z0-9+\/]+=*\z/)
+    raise APIKeyError.sig unless env['HTTP_X_AUTH_TOKEN']
+    signature = env['HTTP_X_AUTH_TOKEN'].sub(BASE64_PADDING, '')
     
     # Check timestamp
-    timestamp = request[:time]
+    timestamp = parameters[:time]
     raise APIKeyError.time unless timestamp
     raise APIKeyError.time unless timestamp.to_i > Time.now.to_i - TIMESTAMP_TOLERANCE
     raise APIKeyError.time unless timestamp.to_i < Time.now.to_i + TIMESTAMP_TOLERANCE
@@ -75,15 +84,15 @@ class RippleAPI
     # Retrieve API key record
     key = @db[:api_keys].where(:key_id => key_id).first
     raise APIKeyError.key unless key
-    raise APIKeyError.access unless key[:account_name] == account
     
     # Find expected signature
-    full_path = request.fullpath.sub(/=+$/, '')
-    trimmed_path = full_path.sub(/&sig=[A-Za-z0-9+\/]+=*\z/, '')
+    full_path = request.fullpath
     digest  = OpenSSL::Digest::Digest.new('sha1')
-    expected_sig = Base64.encode64(OpenSSL::HMAC.digest(digest, key[:secret], trimmed_path)).sub(/=+\n?\z/, '')
-    expected_path = trimmed_path + '&sig=' + expected_sig
-    raise APIKeyError.sig unless full_path == expected_path
+    expected_sig = Base64.encode64(OpenSSL::HMAC.digest(digest, key[:secret], full_path)).sub(BASE64_PADDING, '')
+    
+    raise APIKeyError.sig unless signature == expected_sig
+    
+    return key[:account_name]
   end
   
   def transactions(account, start_period, stop_period)
