@@ -78,8 +78,8 @@ class RippleAPI
     # Check timestamp
     timestamp = parameters[:time]
     raise APIKeyError.time unless timestamp
-    raise APIKeyError.time unless timestamp.to_i > Time.now.to_i - TIMESTAMP_TOLERANCE
-    raise APIKeyError.time unless timestamp.to_i < Time.now.to_i + TIMESTAMP_TOLERANCE
+    raise APIKeyError.time if timestamp.to_i < Time.now.to_i - TIMESTAMP_TOLERANCE
+    raise APIKeyError.time if timestamp.to_i > Time.now.to_i + TIMESTAMP_TOLERANCE
     
     # Retrieve API key record
     key = @db[:api_keys].where(:key_id => key_id).first
