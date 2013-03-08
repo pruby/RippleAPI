@@ -27,7 +27,7 @@ class RippleAPI
       if request.path.match(KEY_SUFFIX)
         md = request.path.match(KEY_SUFFIX)
         key_id = md[1]
-        account = api_key_check(key_id, request)
+        account = api_key_check(key_id, request, env)
       end
       
       if request.get?
@@ -64,7 +64,7 @@ class RippleAPI
     [status, headers, [result.to_json]]
   end
   
-  def api_key_check(key_id, request)
+  def api_key_check(key_id, request, env)
     parameters = request.GET() # query string parameters only
     
     # Check for key and signature
