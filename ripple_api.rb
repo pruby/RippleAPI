@@ -22,6 +22,15 @@ class RippleAPI
     headers = {'Content-type' => 'text/plain'}
     result = 'Not found'
     
+    if env['X_AUTH_TOKEN']
+      headers['E-tag'] = env['X_AUTH_TOKEN']
+      if env['HTTP_IF_NONE_MATCH']
+        status = 304
+        result = '"Not modified"'
+        return [status, headers, [result]]
+      end
+    end
+    
     begin
       account = nil
       if request.path.match(KEY_SUFFIX)
@@ -30,7 +39,7 @@ class RippleAPI
         account = api_key_check(key_id, request, env)
       end
       
-      if request.get?
+      if request.get? || request.head?
         case request.path
           when /^\/account\/#{KEY_SUFFIX}/
             status = 200
