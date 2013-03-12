@@ -18,6 +18,12 @@ class RippleAPI
   
   def call(env)
     request = Rack::Request.new(env)
+    
+    # Intercept CORS pre-flight requests
+    if request.request_method == 'OPTIONS'
+      return [200, {'Access-control-allow-origin' => '*', 'Access-control-allow-methods' => 'GET POST OPTIONS'}, []]
+    end
+    
     status = 404
     headers = {'Content-type' => 'text/plain'}
     result = 'Not found'
